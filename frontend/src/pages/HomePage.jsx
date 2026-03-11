@@ -10,10 +10,8 @@ import {
 } from 'lucide-react'
 import apiClient from '../lib/apiClient.js'
 import Skeleton, { CardSkeleton, TextSkeleton } from '../components/ui/Skeleton.jsx'
-import Logo from '../assets/logo.png';
-import HeroImage from '../assets/hero-image.jpg';
-import BannerImage from '../assets/hero.png';
-// import StandBanner from '../assets/standing-banner.png';
+// Gambar default tidak lagi hardcoded dari aset lokal.
+// Hero dan banner diambil dari pengaturan konten (admin).
 
 function HomePage() {
   const [content, setContent] = useState(null)
@@ -42,6 +40,9 @@ function HomePage() {
     title: 'RS Pelita',
     subtitle: 'Kami menyediakan layanan kesehatan yang responsif dan fungsional untuk pasien di seluruh wilayah.',
   }
+
+  const heroBannerImage = content?.hero?.hero_banner_image || null
+  const heroFeatureImage = content?.hero?.hero_feature_image || null
 
   const stats = content?.stats || [
     { label: 'Dokter Spesialis', value: '20+' },
@@ -102,20 +103,21 @@ function HomePage() {
             data-aos="fade-left"
             data-aos-delay="100"
           >
-            {/* Placeholder gambar hero, silakan ganti di file ini atau melalui komponen terpisah */}
             <div className="relative h-full w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-emerald-50">
-              <img
-                src={BannerImage}
-                alt="RS Pelita"
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  e.target.style.display = 'none'
-                  e.target.nextElementSibling?.classList.remove('hidden')
-                }}
-              />
-              <div className="absolute inset-0 hidden bg-gradient-to-br from-pelitaGreen/90 via-emerald-500 to-pelitaRed/80 opacity-90">
+              {/* Placeholder background ketika belum ada gambar atau masih loading */}
+              <div className="absolute inset-0 bg-gradient-to-br from-pelitaGreen/90 via-emerald-500 to-pelitaRed/80 opacity-90" />
+              {heroBannerImage && !loading && (
+                <img
+                  src={heroBannerImage}
+                  alt="RS Pelita"
+                  className="relative h-full w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              )}
+              <div className="relative inset-0 flex items-stretch">
                 <div className="relative flex h-full flex-col justify-between p-6 text-white">
-                  <img src="/logo.png" alt="RS Pelita" className="h-10 w-auto drop-shadow-md" />
                   <p className="text-sm text-emerald-50 md:text-base">
                     Area untuk foto rumah sakit
                   </p>
@@ -186,16 +188,18 @@ function HomePage() {
           >
             <div className="grid md:grid-cols-[1fr_1fr]">
               <div className="relative aspect-[4/3] min-h-[280px] md:aspect-auto md:min-h-[400px]">
-                <img
-                  src={HeroImage}
-                  alt="RS Pelita"
-                  className="absolute inset-0 h-full w-full object-cover"
-                  onError={(e) => {
-                    e.target.style.display = 'none'
-                    const fallback = e.target.nextElementSibling
-                    if (fallback) fallback.classList.remove('hidden')
-                  }}
-                />
+                {/* Placeholder background ketika belum ada gambar atau masih loading */}
+                <div className="absolute inset-0 bg-slate-200" />
+                {heroFeatureImage && !loading && (
+                  <img
+                    src={heroFeatureImage}
+                    alt="RS Pelita"
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                )}
               </div>
 
               <div className="flex flex-col justify-center p-8 lg:p-12">

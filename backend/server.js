@@ -116,12 +116,24 @@ async function upsertContentBlock(slug, { title = null, body = null, ...extra })
 app.get('/api/content/home', async (req, res) => {
   try {
     const block = (await getContentBlock('home')) || {}
-    const hero = block.hero || {
-      title: block.title || 'RS Pelita',
+    const baseUrl = `${req.protocol}://${req.get('host')}`
+    const heroBannerImageUrl = block.hero_banner_image
+      ? `${baseUrl}/uploads-rs-pelita/${block.hero_banner_image}`
+      : null
+    const heroFeatureImageUrl = block.hero_feature_image
+      ? `${baseUrl}/uploads-rs-pelita/${block.hero_feature_image}`
+      : null
+
+    const hero = {
+      title: block.hero?.title || block.title || 'RS Pelita',
       subtitle:
+        block.hero?.subtitle ||
         block.body ||
         'Placeholder subjudul. Perbarui melalui pengaturan konten di dashboard admin.',
+      hero_banner_image: heroBannerImageUrl,
+      hero_feature_image: heroFeatureImageUrl,
     }
+
     const stats = block.stats || null
     res.json({ hero, stats })
   } catch (error) {
@@ -145,6 +157,80 @@ app.put('/api/content/home', authenticate, async (req, res) => {
     res.status(500).json({ message: 'Gagal menyimpan konten home' })
   }
 })
+
+app.put(
+  '/api/content/home/images',
+  authenticate,
+  upload.fields([
+    { name: 'banner', maxCount: 1 },
+    { name: 'feature', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const files = req.files || {}
+      const bannerFile = Array.isArray(files.banner) && files.banner[0] ? files.banner[0] : null
+      const featureFile =
+        Array.isArray(files.feature) && files.feature[0] ? files.feature[0] : null
+
+      if (!bannerFile && !featureFile) {
+        return res.status(400).json({ message: 'Tidak ada file gambar yang dikirim.' })
+      }
+
+      const [rows] = await pool.query(
+        'SELECT title, body, extra_json FROM content_blocks WHERE slug = ? LIMIT 1',
+        ['home'],
+      )
+
+      let title = null
+      let body = null
+      let extra = {}
+
+      if (rows.length > 0) {
+        title = rows[0].title
+        body = rows[0].body
+        try {
+          extra = rows[0].extra_json ? JSON.parse(rows[0].extra_json) : {}
+        } catch {
+          extra = {}
+        }
+      }
+
+      const oldBannerFilename = extra.hero_banner_image || null
+      const oldFeatureFilename = extra.hero_feature_image || null
+
+      if (bannerFile) {
+        extra.hero_banner_image = bannerFile.filename
+      }
+      if (featureFile) {
+        extra.hero_feature_image = featureFile.filename
+      }
+
+      await upsertContentBlock('home', {
+        title: title || null,
+        body: body || null,
+        ...extra,
+      })
+
+      const deleteIfExists = (filename) => {
+        if (!filename) return
+        const filepath = path.join(UPLOAD_DIR, filename)
+        fs.unlink(filepath, () => {})
+      }
+
+      if (bannerFile && oldBannerFilename && oldBannerFilename !== bannerFile.filename) {
+        deleteIfExists(oldBannerFilename)
+      }
+      if (featureFile && oldFeatureFilename && oldFeatureFilename !== featureFile.filename) {
+        deleteIfExists(oldFeatureFilename)
+      }
+
+      res.json({ success: true })
+    } catch (error) {
+      console.error(error)
+      res.status(500).json({ message: 'Gagal menyimpan gambar hero home' })
+    }
+  },
+)
 
 app.get('/api/content/about', async (req, res) => {
   try {

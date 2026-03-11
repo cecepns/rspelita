@@ -6,6 +6,12 @@ function ContentSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [home, setHome] = useState({ title: '', subtitle: '' })
+  const [homeImages, setHomeImages] = useState({
+    bannerPreview: '',
+    featurePreview: '',
+    bannerFile: null,
+    featureFile: null,
+  })
   const [about, setAbout] = useState({
     title: '',
     body: '',
@@ -38,6 +44,11 @@ function ContentSettingsPage() {
           title: homeRes.data?.hero?.title || '',
           subtitle: homeRes.data?.hero?.subtitle || '',
         })
+        setHomeImages((prev) => ({
+          ...prev,
+          bannerPreview: homeRes.data?.hero?.hero_banner_image || '',
+          featurePreview: homeRes.data?.hero?.hero_feature_image || '',
+        }))
         setAbout({
           title: aboutRes.data?.title || '',
           body: aboutRes.data?.body || '',
@@ -69,7 +80,7 @@ function ContentSettingsPage() {
     event.preventDefault()
     setSaving(true)
     try {
-      await Promise.all([
+      const promises = [
         apiClient.put('/content/home', {
           hero: { title: home.title, subtitle: home.subtitle },
         }),
@@ -84,7 +95,24 @@ function ContentSettingsPage() {
           motto_body: about.motto_body,
         }),
         apiClient.put('/contact', contact),
-      ])
+      ]
+
+      if (homeImages.bannerFile || homeImages.featureFile) {
+        const formData = new FormData()
+        if (homeImages.bannerFile) {
+          formData.append('banner', homeImages.bannerFile)
+        }
+        if (homeImages.featureFile) {
+          formData.append('feature', homeImages.featureFile)
+        }
+        promises.push(
+          apiClient.put('/content/home/images', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          }),
+        )
+      }
+
+      await Promise.all(promises)
     } catch (error) {
       console.error('Failed to save content settings', error)
     } finally {
@@ -141,7 +169,90 @@ function ContentSettingsPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-slate-800">Gambar Hero Home</p>
+              <div className="space-y-2 rounded-md bg-slate-50 p-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-600">
+                    Banner Atas (gambar di samping judul)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="block w-full text-xs text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-pelitaGreen file:px-3 file:py-1 file:text-xs file:font-semibold file:text-white hover:file:bg-emerald-700"
+                    onChange={(e) => {
+                      const file = e.target.files && e.target.files[0]
+                      if (!file) {
+                        setHomeImages((prev) => ({
+                          ...prev,
+                          bannerFile: null,
+                        }))
+                        return
+                      }
+                      const previewUrl = URL.createObjectURL(file)
+                      setHomeImages((prev) => ({
+                        ...prev,
+                        bannerFile: file,
+                        bannerPreview: previewUrl,
+                      }))
+                    }}
+                  />
+                  {homeImages.bannerPreview ? (
+                    <div className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-white">
+                      <img
+                        src={homeImages.bannerPreview}
+                        alt="Preview banner hero"
+                        className="h-32 w-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Belum ada gambar. Halaman depan akan menampilkan background placeholder.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-600">
+                    Gambar Konten (section &quot;Kenapa Harus Memilih RS Pelita?&quot;)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="block w-full text-xs text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-pelitaGreen file:px-3 file:py-1 file:text-xs file:font-semibold file:text-white hover:file:bg-emerald-700"
+                    onChange={(e) => {
+                      const file = e.target.files && e.target.files[0]
+                      if (!file) {
+                        setHomeImages((prev) => ({
+                          ...prev,
+                          featureFile: null,
+                        }))
+                        return
+                      }
+                      const previewUrl = URL.createObjectURL(file)
+                      setHomeImages((prev) => ({
+                        ...prev,
+                        featureFile: file,
+                        featurePreview: previewUrl,
+                      }))
+                    }}
+                  />
+                  {homeImages.featurePreview ? (
+                    <div className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-white">
+                      <img
+                        src={homeImages.featurePreview}
+                        alt="Preview gambar konten"
+                        className="h-32 w-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Belum ada gambar. Halaman depan akan menampilkan background abu-abu polos.
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <p className="text-xs font-semibold text-slate-800">
                 Tentang Kami
               </p>
