@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage.jsx'
 import AboutPage from './pages/AboutPage.jsx'
 import ServicesPage from './pages/ServicesPage.jsx'
 import NewsPage from './pages/NewsPage.jsx'
+import NewsDetailPage from './pages/NewsDetailPage.jsx'
 import ContactPage from './pages/ContactPage.jsx'
 import AdminLoginPage from './pages/admin/AdminLoginPage.jsx'
 import DashboardHomePage from './pages/admin/DashboardHomePage.jsx'
@@ -22,6 +23,7 @@ function App() {
           <Route path="/tentang-kami" element={<AboutPage />} />
           <Route path="/layanan" element={<ServicesPage />} />
           <Route path="/berita" element={<NewsPage />} />
+          <Route path="/berita/:id" element={<NewsDetailPage />} />
           <Route path="/kontak-kami" element={<ContactPage />} />
         </Route>
 

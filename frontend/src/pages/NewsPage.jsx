@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CalendarDays, ChevronRight } from 'lucide-react'
 import apiClient from '../lib/apiClient.js'
 import { CardSkeleton } from '../components/ui/Skeleton.jsx'
@@ -6,6 +7,7 @@ import { CardSkeleton } from '../components/ui/Skeleton.jsx'
 function NewsPage() {
   const [articles, setArticles] = useState([])
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     async function load() {
@@ -20,6 +22,10 @@ function NewsPage() {
     }
     load()
   }, [])
+
+  function handleOpenArticle(article) {
+    navigate(`/berita/${article.id}`, { state: { article } })
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 lg:px-6 lg:py-12">
@@ -77,6 +83,7 @@ function NewsPage() {
                   </p>
                   <button
                     type="button"
+                    onClick={() => handleOpenArticle(article)}
                     className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-pelitaGreen hover:underline"
                   >
                     Baca selengkapnya
