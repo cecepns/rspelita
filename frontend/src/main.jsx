@@ -13,6 +13,7 @@ function AppWithProviders() {
       once: true,
       offset: 80,
       easing: 'ease-out-cubic',
+      disable: () => window.innerWidth < 768,
     })
   }, [])
 
