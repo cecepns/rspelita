@@ -116,13 +116,6 @@ function HomePage() {
                   }}
                 />
               )}
-              <div className="relative inset-0 flex items-stretch">
-                <div className="relative flex h-full flex-col justify-between p-6 text-white">
-                  <p className="text-sm text-emerald-50 md:text-base">
-                    Area untuk foto rumah sakit
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
