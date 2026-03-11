@@ -30,11 +30,6 @@ function NewsPage() {
         <h1 className="text-2xl font-semibold text-slate-900 md:text-3xl">
           Berita &amp; Informasi Terbaru
         </h1>
-        <p className="max-w-2xl text-sm text-slate-600 md:text-base">
-          Artikel dan pengumuman rumah sakit dikelola dari modul admin
-          &quot;Berita&quot;. Gunakan fitur ini untuk menyampaikan informasi
-          kegiatan, edukasi kesehatan, maupun pengumuman penting.
-        </p>
       </header>
 
       <section className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">

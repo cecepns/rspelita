@@ -30,20 +30,12 @@ function ServicesPage() {
         <h1 className="text-2xl font-semibold text-slate-900 md:text-3xl">
           Fasilitas &amp; Pelayanan RS Pelita
         </h1>
-        <p className="max-w-2xl text-sm text-slate-600 md:text-base">
-          Data fasilitas layanan ini dikelola dari modul admin &quot;Fasilitas
-          Layanan&quot;. Anda dapat menambah, mengubah, atau menyembunyikan
-          layanan sesuai kebutuhan.
-        </p>
       </header>
 
       <section className="mt-8">
         <h2 className="text-sm font-semibold text-slate-800">
           Fasilitas Layanan
         </h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Ditampilkan secara dinamis dari database.
-        </p>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {loading
