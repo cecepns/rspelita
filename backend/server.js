@@ -10,6 +10,10 @@ require('dotenv').config()
 const app = express()
 const PORT = process.env.PORT || 4000
 const UPLOAD_DIR = path.join(__dirname, 'uploads-rs-pelita')
+const PUBLIC_BASE_PATH = (process.env.PUBLIC_BASE_PATH || '/rspelita').replace(
+  /^\/+|\/+$/g,
+  '',
+)
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true })
@@ -54,6 +58,22 @@ app.use(
   '/uploads-rs-pelita',
   express.static(UPLOAD_DIR, { maxAge: '1d', index: false }),
 )
+if (PUBLIC_BASE_PATH) {
+  app.use(
+    `/${PUBLIC_BASE_PATH}/uploads-rs-pelita`,
+    express.static(UPLOAD_DIR, { maxAge: '1d', index: false }),
+  )
+}
+
+function getPublicBaseUrl(req) {
+  const prefix = PUBLIC_BASE_PATH ? `/${PUBLIC_BASE_PATH}` : ''
+  return `${req.protocol}://${req.get('host')}${prefix}`
+}
+
+function buildUploadUrl(req, filename) {
+  if (!filename) return null
+  return `${getPublicBaseUrl(req)}/uploads-rs-pelita/${filename}`
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -135,13 +155,8 @@ async function upsertContentBlock(slug, { title = null, body = null, ...extra })
 app.get('/api/content/home', async (req, res) => {
   try {
     const block = (await getContentBlock('home')) || {}
-    const baseUrl = `${req.protocol}://${req.get('host')}`
-    const heroBannerImageUrl = block.hero_banner_image
-      ? `${baseUrl}/uploads-rs-pelita/${block.hero_banner_image}`
-      : null
-    const heroFeatureImageUrl = block.hero_feature_image
-      ? `${baseUrl}/uploads-rs-pelita/${block.hero_feature_image}`
-      : null
+    const heroBannerImageUrl = buildUploadUrl(req, block.hero_banner_image)
+    const heroFeatureImageUrl = buildUploadUrl(req, block.hero_feature_image)
 
     const hero = {
       title: block.hero?.title || block.title || 'RS Pelita',
@@ -351,12 +366,11 @@ app.get('/api/facilities', async (req, res) => {
     const limit = Number(req.query.limit) || null
     const sql = 'SELECT id, name, description, image_path FROM facilities ORDER BY id DESC'
     const [rows] = await pool.query(limit ? `${sql} LIMIT ?` : sql, limit ? [limit] : [])
-    const baseUrl = `${req.protocol}://${req.get('host')}`
     const items = rows.map((row) => ({
       id: row.id,
       name: row.name,
       description: row.description || null,
-      image: row.image_path ? `${baseUrl}/uploads-rs-pelita/${row.image_path}` : null,
+      image: buildUploadUrl(req, row.image_path),
     }))
     res.json({ items })
   } catch (error) {
@@ -388,6 +402,50 @@ app.post('/api/facilities', authenticate, upload.single('image'), async (req, re
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: 'Gagal menambah fasilitas' })
+  }
+})
+
+app.put('/api/facilities/:id', authenticate, upload.single('image'), async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ message: 'ID fasilitas tidak valid.' })
+    }
+
+    const body = req.body || {}
+    const name = typeof body.name === 'string' ? body.name.trim() : ''
+    const description =
+      typeof body.description === 'string' ? body.description.trim() || null : null
+
+    if (!name) {
+      return res.status(400).json({ message: 'Nama fasilitas wajib diisi.' })
+    }
+
+    const [rows] = await pool.query(
+      'SELECT image_path FROM facilities WHERE id = ? LIMIT 1',
+      [id],
+    )
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Fasilitas tidak ditemukan.' })
+    }
+
+    const oldImagePath = rows[0].image_path || null
+    const newImagePath = req.file ? req.file.filename : oldImagePath
+
+    await pool.query(
+      'UPDATE facilities SET name = ?, description = ?, image_path = ? WHERE id = ?',
+      [name, description, newImagePath, id],
+    )
+
+    if (req.file && oldImagePath && oldImagePath !== req.file.filename) {
+      const filepath = path.join(UPLOAD_DIR, oldImagePath)
+      fs.unlink(filepath, () => {})
+    }
+
+    res.json({ success: true })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: 'Gagal memperbarui fasilitas' })
   }
 })
 
@@ -431,12 +489,11 @@ app.get('/api/doctors', async (req, res) => {
     ].join(', ')
     const sql = `SELECT ${cols} FROM doctors ORDER BY id DESC`
     const [rows] = await pool.query(limit ? `${sql} LIMIT ?` : sql, limit ? [limit] : [])
-    const baseUrl = `${req.protocol}://${req.get('host')}`
     const items = rows.map((row) => ({
       id: row.id,
       name: row.name,
       specialty: row.specialty || null,
-      image: row.image_path ? `${baseUrl}/uploads-rs-pelita/${row.image_path}` : null,
+      image: buildUploadUrl(req, row.image_path),
       ...DAYS_COLUMNS.reduce((acc, col) => {
         acc[col] = row[col] || null
         return acc
@@ -517,9 +574,7 @@ app.get('/api/articles', async (req, res) => {
       excerpt: row.excerpt,
       body: row.body,
       published_at: row.published_at,
-      image: row.image_path
-        ? `${req.protocol}://${req.get('host')}/uploads-rs-pelita/${row.image_path}`
-        : null,
+      image: buildUploadUrl(req, row.image_path),
     }))
     res.json({ items })
   } catch (error) {
