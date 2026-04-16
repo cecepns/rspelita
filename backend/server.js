@@ -24,6 +24,25 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 })
 
+async function ensureFacilitiesImageColumn() {
+  const dbName = process.env.DB_NAME || 'rs_pelita_cms'
+  const [rows] = await pool.query(
+    `
+      SELECT 1
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = ?
+        AND TABLE_NAME = 'facilities'
+        AND COLUMN_NAME = 'image_path'
+      LIMIT 1
+    `,
+    [dbName],
+  )
+
+  if (rows.length === 0) {
+    await pool.query('ALTER TABLE facilities ADD COLUMN image_path VARCHAR(255) NULL')
+  }
+}
+
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -330,21 +349,40 @@ app.put('/api/contact', authenticate, async (req, res) => {
 app.get('/api/facilities', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || null
-    const sql = 'SELECT id, name, description FROM facilities ORDER BY id DESC'
+    const sql = 'SELECT id, name, description, image_path FROM facilities ORDER BY id DESC'
     const [rows] = await pool.query(limit ? `${sql} LIMIT ?` : sql, limit ? [limit] : [])
-    res.json({ items: rows })
+    const baseUrl = `${req.protocol}://${req.get('host')}`
+    const items = rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description || null,
+      image: row.image_path ? `${baseUrl}/uploads-rs-pelita/${row.image_path}` : null,
+    }))
+    res.json({ items })
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: 'Gagal mengambil fasilitas' })
   }
 })
 
-app.post('/api/facilities', authenticate, async (req, res) => {
+app.post('/api/facilities', authenticate, upload.single('image'), async (req, res) => {
   try {
-    const { name, description } = req.body || {}
+    const body = req.body || {}
+    const name = typeof body.name === 'string' ? body.name.trim() : ''
+    const description =
+      typeof body.description === 'string' ? body.description.trim() || null : null
+    const imagePath = req.file ? req.file.filename : null
+
+    if (!name) {
+      return res.status(400).json({ message: 'Nama fasilitas wajib diisi.' })
+    }
+    if (!imagePath) {
+      return res.status(400).json({ message: 'Gambar fasilitas wajib diunggah.' })
+    }
+
     await pool.query(
-      'INSERT INTO facilities (name, description) VALUES (?, ?)',
-      [name, description || null],
+      'INSERT INTO facilities (name, description, image_path) VALUES (?, ?, ?)',
+      [name, description, imagePath],
     )
     res.status(201).json({ success: true })
   } catch (error) {
@@ -356,6 +394,14 @@ app.post('/api/facilities', authenticate, async (req, res) => {
 app.delete('/api/facilities/:id', authenticate, async (req, res) => {
   try {
     const id = Number(req.params.id)
+    const [rows] = await pool.query(
+      'SELECT image_path FROM facilities WHERE id = ? LIMIT 1',
+      [id],
+    )
+    if (rows.length > 0 && rows[0].image_path) {
+      const filepath = path.join(UPLOAD_DIR, rows[0].image_path)
+      fs.unlink(filepath, () => {})
+    }
     await pool.query('DELETE FROM facilities WHERE id = ?', [id])
     res.json({ success: true })
   } catch (error) {
@@ -559,7 +605,17 @@ app.get('/api/health', async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`RS Pelita backend listening on http://localhost:${PORT}`)
-})
+async function startServer() {
+  try {
+    await ensureFacilitiesImageColumn()
+    app.listen(PORT, () => {
+      console.log(`RS Pelita backend listening on http://localhost:${PORT}`)
+    })
+  } catch (error) {
+    console.error('Failed to start server', error)
+    process.exit(1)
+  }
+}
+
+startServer()
 

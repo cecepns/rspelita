@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Stethoscope } from 'lucide-react'
 import apiClient from '../lib/apiClient.js'
 import { CardSkeleton } from '../components/ui/Skeleton.jsx'
 
@@ -48,19 +47,24 @@ function ServicesPage() {
                   className="group flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                   data-aos="fade-up"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-pelitaGreen">
-                      <Stethoscope className="h-4 w-4" />
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-40 w-full rounded-lg object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-40 w-full items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-500">
+                      Gambar layanan belum tersedia
                     </div>
-                    <div>
-                      <h3 className="text-md font-semibold text-slate-900">
-                        {item.name}
-                      </h3>
-                      <p className="mt-1 text-slate-600">
-                        {item.description ||
-                          'Placeholder deskripsi layanan. Silakan isi detail melalui dashboard admin.'}
-                      </p>
-                    </div>
+                  )}
+                  <div className="mt-3">
+                    <h3 className="text-md font-semibold text-slate-900">{item.name}</h3>
+                    <p className="mt-1 text-slate-600">
+                      {item.description ||
+                        'Placeholder deskripsi layanan. Silakan isi detail melalui dashboard admin.'}
+                    </p>
                   </div>
                 </article>
               ))}

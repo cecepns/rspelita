@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import apiClient from '../../lib/apiClient.js'
 import { CardSkeleton } from '../../components/ui/Skeleton.jsx'
@@ -7,7 +7,9 @@ function FacilitiesPage() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ name: '', description: '' })
+  const [imageFile, setImageFile] = useState(null)
   const [saving, setSaving] = useState(false)
+  const imageInputRef = useRef(null)
 
   const load = async () => {
     setLoading(true)
@@ -27,11 +29,19 @@ function FacilitiesPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    if (!form.name.trim()) return
+    if (!form.name.trim() || !imageFile) return
     setSaving(true)
     try {
-      await apiClient.post('/facilities', form)
+      const payload = new FormData()
+      payload.append('name', form.name)
+      payload.append('description', form.description)
+      payload.append('image', imageFile)
+      await apiClient.post('/facilities', payload)
       setForm({ name: '', description: '' })
+      setImageFile(null)
+      if (imageInputRef.current) {
+        imageInputRef.current.value = ''
+      }
       await load()
     } catch (error) {
       console.error('Failed to save facility', error)
@@ -92,6 +102,17 @@ function FacilitiesPage() {
               placeholder="Opsional, deskripsi singkat fasilitas."
             />
           </div>
+          <div className="space-y-1">
+            <label className="text-xs text-slate-600">Gambar Fasilitas</label>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+              required
+              className="block w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 file:mr-3 file:rounded file:border-0 file:bg-pelitaGreen file:px-2 file:py-1 file:text-xs file:font-semibold file:text-white"
+            />
+          </div>
           <button
             type="submit"
             disabled={saving}
@@ -123,6 +144,13 @@ function FacilitiesPage() {
                   key={item.id}
                   className="flex flex-col rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs"
                 >
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-28 w-full rounded-md object-cover"
+                    />
+                  ) : null}
                   <p className="font-semibold text-slate-900">{item.name}</p>
                   <p className="mt-1 text-slate-600">
                     {item.description ||
